@@ -9,6 +9,8 @@ import android.os.Handler
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.view.animation.AnimationUtils
+import android.widget.Toast
+import com.simplemobiletools.clock.AlarmAudioManager
 import com.simplemobiletools.clock.R
 import com.simplemobiletools.clock.extensions.*
 import com.simplemobiletools.clock.helpers.ALARM_ID
@@ -19,6 +21,9 @@ import com.simplemobiletools.commons.helpers.MINUTE_SECONDS
 import kotlinx.android.synthetic.main.activity_reminder.*
 
 class ReminderActivity : SimpleActivity() {
+
+    private val sourceURL = "http://radioluz.pwr.edu.pl:8000/luzhifi.mp3"
+    private lateinit var audioPlayer: AlarmAudioManager
     private val INCREASE_VOLUME_DELAY = 3000L
 
     private val increaseVolumeHandler = Handler()
@@ -27,13 +32,13 @@ class ReminderActivity : SimpleActivity() {
     private var isAlarmReminder = false
     private var didVibrate = false
     private var alarm: Alarm? = null
-    private var mediaPlayer: MediaPlayer? = null
     private var lastVolumeValue = 0.1f
     private var dragDownX = 0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_reminder)
+        audioPlayer = AlarmAudioManager.getInstance(this)
         showOverLockscreen()
         updateTextColors(reminder_holder as ViewGroup)
 
@@ -63,6 +68,7 @@ class ReminderActivity : SimpleActivity() {
 
         setupButtons()
         setupAudio()
+
     }
 
     private fun setupButtons() {
@@ -148,17 +154,8 @@ class ReminderActivity : SimpleActivity() {
         if (!isAlarmReminder || !config.increaseVolumeGradually) {
             lastVolumeValue = 1f
         }
-
-        val soundUri = Uri.parse(if (alarm != null) alarm!!.soundUri else config.timerSoundUri)
         try {
-            mediaPlayer = MediaPlayer().apply {
-                setAudioStreamType(AudioManager.STREAM_ALARM)
-                setDataSource(this@ReminderActivity, soundUri)
-                setVolume(lastVolumeValue, lastVolumeValue)
-                isLooping = true
-                prepare()
-                start()
-            }
+           audioPlayer.play(sourceURL)
         } catch (e: Exception) {
             showErrorToast(e)
         }
@@ -171,7 +168,7 @@ class ReminderActivity : SimpleActivity() {
     private fun scheduleVolumeIncrease() {
         increaseVolumeHandler.postDelayed({
             lastVolumeValue = Math.min(lastVolumeValue + 0.1f, 1f)
-            mediaPlayer?.setVolume(lastVolumeValue, lastVolumeValue)
+            audioPlayer.mediaPlayer?.setVolume(lastVolumeValue, lastVolumeValue)
             scheduleVolumeIncrease()
         }, INCREASE_VOLUME_DELAY)
     }
@@ -190,9 +187,7 @@ class ReminderActivity : SimpleActivity() {
     }
 
     private fun destroyPlayer() {
-        mediaPlayer?.stop()
-        mediaPlayer?.release()
-        mediaPlayer = null
+        audioPlayer.release()
     }
 
     private fun snoozeAlarm() {
